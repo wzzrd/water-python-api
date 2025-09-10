@@ -20,12 +20,11 @@ import threading
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
+
 
 class WaterMeterDaemon:
     def __init__(self):
@@ -33,17 +32,19 @@ class WaterMeterDaemon:
         self.db_conn = None
 
         # Configuration from environment variables
-        self.meter_api_url = os.getenv('METER_API_URL', 'http://192.168.1.100/api/data')
-        self.meter_api_timeout = int(os.getenv('METER_API_TIMEOUT', '10'))
-        self.collection_interval = int(os.getenv('COLLECTION_INTERVAL', '300'))  # 5 minutes default
-        self.meter_id = os.getenv('METER_ID', 'default_meter')
+        self.meter_api_url = os.getenv("METER_API_URL", "http://192.168.1.100/api/data")
+        self.meter_api_timeout = int(os.getenv("METER_API_TIMEOUT", "10"))
+        self.collection_interval = int(
+            os.getenv("COLLECTION_INTERVAL", "300")
+        )  # 5 minutes default
+        self.meter_id = os.getenv("METER_ID", "default_meter")
 
         # Database configuration
-        self.db_host = os.getenv('DB_HOST', 'localhost')
-        self.db_port = int(os.getenv('DB_PORT', '5432'))
-        self.db_name = os.getenv('DB_NAME', 'watermeter')
-        self.db_user = os.getenv('DB_USER')
-        self.db_password = os.getenv('DB_PASSWORD')
+        self.db_host = os.getenv("DB_HOST", "localhost")
+        self.db_port = int(os.getenv("DB_PORT", "5432"))
+        self.db_name = os.getenv("DB_NAME", "watermeter")
+        self.db_user = os.getenv("DB_USER")
+        self.db_password = os.getenv("DB_PASSWORD")
 
         if not self.db_user or not self.db_password:
             logger.error("DB_USER and DB_PASSWORD environment variables are required")
@@ -74,7 +75,7 @@ class WaterMeterDaemon:
                     database=self.db_name,
                     user=self.db_user,
                     password=self.db_password,
-                    cursor_factory=RealDictCursor
+                    cursor_factory=RealDictCursor,
                 )
                 self.db_conn.autocommit = True
                 logger.info(f"Connected to existing database: {self.db_name}")
@@ -88,9 +89,9 @@ class WaterMeterDaemon:
                     admin_conn = psycopg2.connect(
                         host=self.db_host,
                         port=self.db_port,
-                        database='postgres',  # Connect to default postgres db
+                        database="postgres",  # Connect to default postgres db
                         user=self.db_user,
-                        password=self.db_password
+                        password=self.db_password,
                     )
                     admin_conn.autocommit = True
 
@@ -108,7 +109,7 @@ class WaterMeterDaemon:
                         database=self.db_name,
                         user=self.db_user,
                         password=self.db_password,
-                        cursor_factory=RealDictCursor
+                        cursor_factory=RealDictCursor,
                     )
                     self.db_conn.autocommit = True
                     logger.info(f"Connected to newly created database: {self.db_name}")
@@ -126,7 +127,9 @@ class WaterMeterDaemon:
         try:
             with self.db_conn.cursor() as cursor:
                 # Check if TimescaleDB extension exists
-                cursor.execute("SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'")
+                cursor.execute(
+                    "SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'"
+                )
                 if not cursor.fetchone():
                     logger.info("Creating TimescaleDB extension...")
                     cursor.execute("CREATE EXTENSION IF NOT EXISTS timescaledb")
@@ -147,20 +150,24 @@ class WaterMeterDaemon:
                 cursor.execute(create_table_sql)
 
                 # Check if hypertable already exists
-                cursor.execute("""
-                    SELECT 1 FROM _timescaledb_catalog.hypertable
+                cursor.execute(
+                    """
+                    SELECT 1 FROM _timescaledb_catalog.hypertable 
                     WHERE table_name = 'water_readings'
-                """)
+                """
+                )
 
                 if not cursor.fetchone():
                     logger.info("Creating hypertable...")
                     cursor.execute("SELECT create_hypertable('water_readings', 'time')")
 
                 # Create index for efficient queries
-                cursor.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_water_readings_meter_time
+                cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_water_readings_meter_time 
                     ON water_readings (meter_id, time DESC)
-                """)
+                """
+                )
 
                 logger.info("Database schema setup completed")
                 return True
@@ -172,17 +179,14 @@ class WaterMeterDaemon:
     def _read_meter(self) -> Optional[Dict]:
         """Read data from the water meter API"""
         try:
-            response = requests.get(
-                self.meter_api_url,
-                timeout=self.meter_api_timeout
-            )
+            response = requests.get(self.meter_api_url, timeout=self.meter_api_timeout)
             response.raise_for_status()
 
             data = response.json()
             logger.debug(f"Meter reading: {data}")
 
             # Validate required fields
-            required_fields = ['total_liter_m3', 'active_liter_lpm', 'wifi_strength']
+            required_fields = ["total_liter_m3", "active_liter_lpm", "wifi_strength"]
             for field in required_fields:
                 if field not in data:
                     logger.error(f"Missing required field: {field}")
@@ -203,22 +207,25 @@ class WaterMeterDaemon:
             with self.db_conn.cursor() as cursor:
                 insert_sql = """
                 INSERT INTO water_readings (
-                    time, meter_id, total_liter_m3, active_liter_lpm,
+                    time, meter_id, total_liter_m3, active_liter_lpm, 
                     wifi_strength, wifi_ssid, total_liter_offset_m3
                 ) VALUES (
                     %s, %s, %s, %s, %s, %s, %s
                 )
                 """
 
-                cursor.execute(insert_sql, (
-                    datetime.now(),
-                    self.meter_id,
-                    float(reading_data['total_liter_m3']),
-                    float(reading_data['active_liter_lpm']),
-                    int(reading_data['wifi_strength']),
-                    reading_data.get('wifi_ssid'),
-                    float(reading_data.get('total_liter_offset_m3', 0))
-                ))
+                cursor.execute(
+                    insert_sql,
+                    (
+                        datetime.now(),
+                        self.meter_id,
+                        float(reading_data["total_liter_m3"]),
+                        float(reading_data["active_liter_lpm"]),
+                        int(reading_data["wifi_strength"]),
+                        reading_data.get("wifi_ssid"),
+                        float(reading_data.get("total_liter_offset_m3", 0)),
+                    ),
+                )
 
                 logger.info(f"Stored reading: {reading_data['total_liter_m3']} m³")
                 return True
@@ -294,9 +301,11 @@ class WaterMeterDaemon:
             self.db_conn.close()
         logger.info("Water Meter Daemon stopped")
 
+
 def main():
     daemon = WaterMeterDaemon()
     daemon.run()
+
 
 if __name__ == "__main__":
     main()
