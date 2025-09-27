@@ -123,7 +123,7 @@ class WaterMeterDaemon:
             return False
 
     def _setup_schema(self) -> bool:
-        """Create the water_readings table and hypertable if they don't exist"""
+        """Create the water_readings and maintenance_log tables and hypertables if they don't exist"""
         try:
             with self.db_conn.cursor() as cursor:
                 # Check if TimescaleDB extension exists
@@ -134,8 +134,8 @@ class WaterMeterDaemon:
                     logger.info("Creating TimescaleDB extension...")
                     cursor.execute("CREATE EXTENSION IF NOT EXISTS timescaledb")
 
-                # Create table if it doesn't exist
-                create_table_sql = """
+                # Create water_readings table if it doesn't exist
+                create_readings_table_sql = """
                 CREATE TABLE IF NOT EXISTS water_readings (
                     time TIMESTAMPTZ NOT NULL,
                     meter_id TEXT NOT NULL,
@@ -147,29 +147,73 @@ class WaterMeterDaemon:
                     PRIMARY KEY (time, meter_id)
                 );
                 """
-                cursor.execute(create_table_sql)
+                cursor.execute(create_readings_table_sql)
 
-                # Check if hypertable already exists
+                # Create maintenance_log table if it doesn't exist
+                create_maintenance_table_sql = """
+                CREATE TABLE IF NOT EXISTS maintenance_log (
+                    id SERIAL,
+                    time TIMESTAMPTZ NOT NULL,
+                    meter_id TEXT NOT NULL,
+                    maintenance_type TEXT NOT NULL,
+                    description TEXT,
+                    quantity NUMERIC(10,3),
+                    unit TEXT,
+                    cost NUMERIC(10,2),
+                    notes TEXT,
+                    created_by TEXT DEFAULT 'system',
+                    PRIMARY KEY (time, id)
+                );
+                """
+                cursor.execute(create_maintenance_table_sql)
+
+                # Check if water_readings hypertable already exists
                 cursor.execute(
                     """
-                    SELECT 1 FROM _timescaledb_catalog.hypertable 
+                    SELECT 1 FROM _timescaledb_catalog.hypertable
                     WHERE table_name = 'water_readings'
                 """
                 )
 
                 if not cursor.fetchone():
-                    logger.info("Creating hypertable...")
+                    logger.info("Creating water_readings hypertable...")
                     cursor.execute("SELECT create_hypertable('water_readings', 'time')")
 
-                # Create index for efficient queries
+                # Check if maintenance_log hypertable already exists
                 cursor.execute(
                     """
-                    CREATE INDEX IF NOT EXISTS idx_water_readings_meter_time 
+                    SELECT 1 FROM _timescaledb_catalog.hypertable
+                    WHERE table_name = 'maintenance_log'
+                """
+                )
+
+                if not cursor.fetchone():
+                    logger.info("Creating maintenance_log hypertable...")
+                    cursor.execute("SELECT create_hypertable('maintenance_log', 'time')")
+
+                # Create indexes for efficient queries
+                cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_water_readings_meter_time
                     ON water_readings (meter_id, time DESC)
                 """
                 )
 
-                logger.info("Database schema setup completed")
+                cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_maintenance_log_meter_time
+                    ON maintenance_log (meter_id, time DESC)
+                """
+                )
+
+                cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_maintenance_log_type
+                    ON maintenance_log (meter_id, maintenance_type, time DESC)
+                """
+                )
+
+                logger.info("Database schema setup completed (water_readings and maintenance_log tables)")
                 return True
 
         except psycopg2.Error as e:
@@ -207,7 +251,7 @@ class WaterMeterDaemon:
             with self.db_conn.cursor() as cursor:
                 insert_sql = """
                 INSERT INTO water_readings (
-                    time, meter_id, total_liter_m3, active_liter_lpm, 
+                    time, meter_id, total_liter_m3, active_liter_lpm,
                     wifi_strength, wifi_ssid, total_liter_offset_m3
                 ) VALUES (
                     %s, %s, %s, %s, %s, %s, %s
