@@ -12,6 +12,7 @@ import signal
 import logging
 import requests
 import psycopg2
+from psycopg2 import sql
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
 from typing import Dict, Optional
@@ -96,8 +97,12 @@ class WaterMeterDaemon:
                     admin_conn.autocommit = True
 
                     with admin_conn.cursor() as cursor:
-                        # Create the database
-                        cursor.execute(f'CREATE DATABASE "{self.db_name}"')
+                        # Create the database using sql.Identifier to prevent SQL injection
+                        cursor.execute(
+                            sql.SQL('CREATE DATABASE {}').format(
+                                sql.Identifier(self.db_name)
+                            )
+                        )
                         logger.info(f"Database {self.db_name} created successfully")
 
                     admin_conn.close()
