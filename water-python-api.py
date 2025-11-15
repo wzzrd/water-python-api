@@ -250,6 +250,16 @@ class WaterMeterDaemon:
             logger.error(f"Invalid JSON response from meter: {e}")
             return None
 
+    def _safe_float(self, value, default: float = 0.0) -> float:
+        """Safely convert a value to float with a default fallback"""
+        if value is None or value == "":
+            return default
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            logger.warning(f"Could not convert '{value}' to float, using default: {default}")
+            return default
+
     def _store_reading(self, reading_data: Dict) -> bool:
         """Store a reading in the database"""
         try:
@@ -272,7 +282,7 @@ class WaterMeterDaemon:
                         float(reading_data["active_liter_lpm"]),
                         int(reading_data["wifi_strength"]),
                         reading_data.get("wifi_ssid"),
-                        float(reading_data.get("total_liter_offset_m3", 0)),
+                        self._safe_float(reading_data.get("total_liter_offset_m3"), 0.0),
                     ),
                 )
 
