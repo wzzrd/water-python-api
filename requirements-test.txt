@@ -1,0 +1,13 @@
+# Testing dependencies for water-python-api
+
+# Core testing framework
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.1
+
+# Runtime dependencies (needed for imports)
+psycopg2-binary>=2.9.0
+requests>=2.31.0
+
+# Code coverage reporting
+coverage>=7.3.0
