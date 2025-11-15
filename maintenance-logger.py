@@ -9,7 +9,7 @@ import sys
 import argparse
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 class MaintenanceLogger:
@@ -60,7 +60,7 @@ class MaintenanceLogger:
                 """
 
                 cursor.execute(insert_sql, (
-                    datetime.now(),
+                    datetime.now(timezone.utc),
                     self.meter_id,
                     maintenance_type,
                     description,
@@ -139,7 +139,7 @@ class MaintenanceLogger:
                 result = cursor.fetchone()
 
                 if result:
-                    days_ago = (datetime.now() - result['time'].replace(tzinfo=None)).days
+                    days_ago = (datetime.now(timezone.utc) - result['time']).days
                     print(f"🧂 Last salt replacement: {result['time'].strftime('%Y-%m-%d %H:%M')} ({days_ago} days ago)")
                     if result['description']:
                         print(f"   Description: {result['description']}")
