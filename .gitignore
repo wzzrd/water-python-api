@@ -176,3 +176,4 @@ pyrightconfig.json
 # envrc
 .env
 .envrc
+.claude
