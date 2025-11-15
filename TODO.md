@@ -6,17 +6,19 @@ This document tracks planned improvements, optimizations, and feature additions 
 
 ### SQL Injection Vulnerabilities
 
-- [ ] **Fix SQL injection in water-python-api.py:100**
+- [x] **Fix SQL injection in water-python-api.py:100** ✅
   - Issue: Database name is constructed with f-string in `CREATE DATABASE` statement
   - Fix: Use `sql.Identifier()` from `psycopg2.sql` or validate database name against allowlist
   - Location: `water-python-api.py:100`
   - Severity: High
+  - **Status**: Fixed in commit 763f22e
 
-- [ ] **Fix SQL injection in maintenance-logger.py:97**
+- [x] **Fix SQL injection in maintenance-logger.py:97** ✅
   - Issue: Days parameter is interpolated into SQL `INTERVAL` clause using string formatting
   - Fix: Use parameterized interval construction: `INTERVAL '1 day' * %s`
   - Location: `maintenance-logger.py:97`
   - Severity: High
+  - **Status**: Fixed in commit 9349800
 
 ### Timezone Handling
 

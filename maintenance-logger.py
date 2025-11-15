@@ -94,7 +94,7 @@ class MaintenanceLogger:
                            cost, notes, created_by
                     FROM maintenance_log
                     WHERE meter_id = %s
-                      AND time >= NOW() - INTERVAL '%s days'
+                      AND time >= NOW() - INTERVAL '1 day' * %s
                     ORDER BY time DESC
                 """, (self.meter_id, days))
 
