@@ -13,9 +13,11 @@ This system provides:
 
 ## Prerequisites
 
-- **Podman** (or Docker) for container builds and deployment
-- **PostgreSQL 12+** with **TimescaleDB extension** installed
+- **Podman** for container builds and deployment (tested with Podman only, not Docker)
+- **PostgreSQL 17 with TimescaleDB extension** (tested configuration)
 - **Water meter** with accessible HTTP API endpoint
+
+**Note**: This project has only been tested with Podman and PostgreSQL 17 with TimescaleDB. Other configurations may work but are untested.
 
 ## Quick Start
 
@@ -101,6 +103,74 @@ podman run -d \
     water-python-api:latest
 ```
 
+## Deployment Options
+
+### Manual Container Run
+
+Use the `podman run` commands shown in the Quick Start section above for manual deployment.
+
+### Systemd Quadlet (Recommended for Production)
+
+For production deployments, use Podman's Quadlet integration with systemd for automatic startup and management.
+
+**1. Copy the example Quadlet file:**
+
+An example Quadlet configuration is provided in `water-python-api.container`.
+
+**2. Edit the configuration:**
+
+```bash
+# Edit the file and update the environment variables with your settings
+vi water-python-api.container
+```
+
+Update at minimum:
+- `DB_USER`, `DB_PASSWORD`, `DB_HOST` - Your database credentials
+- `METER_API_URL` - Your water meter API endpoint
+- `Image` - Set to `localhost/water-python-api:latest` or your registry path
+
+**3. Install the Quadlet file:**
+
+```bash
+# For system-wide service (runs as root)
+sudo cp water-python-api.container /etc/containers/systemd/
+
+# OR for user service (rootless, recommended)
+mkdir -p ~/.config/containers/systemd/
+cp water-python-api.container ~/.config/containers/systemd/
+```
+
+**4. Reload systemd and start the service:**
+
+```bash
+# System-wide
+sudo systemctl daemon-reload
+sudo systemctl start water-python-api
+sudo systemctl enable water-python-api  # Start on boot
+
+# OR User service
+systemctl --user daemon-reload
+systemctl --user start water-python-api
+systemctl --user enable water-python-api
+loginctl enable-linger $USER  # Keep user services running after logout
+```
+
+**5. Check service status:**
+
+```bash
+# System-wide
+sudo systemctl status water-python-api
+
+# User service
+systemctl --user status water-python-api
+```
+
+**Benefits of Quadlet deployment:**
+- Automatic startup on system boot
+- Automatic restart on failure
+- Integration with systemd logging (`journalctl`)
+- Optional automatic container updates with `podman-auto-update.timer`
+
 ## Database Setup
 
 ### Install TimescaleDB Extension
@@ -166,12 +236,25 @@ The `maintenance-logger.py` tool allows you to track maintenance activities.
 
 ### View Container Logs
 
+**With manual container deployment:**
 ```bash
 # Follow logs in real-time
 podman logs -f water-python-api
 
 # View last 100 lines
 podman logs --tail 100 water-python-api
+```
+
+**With Systemd Quadlet deployment:**
+```bash
+# Follow logs in real-time (system-wide)
+sudo journalctl -u water-python-api -f
+
+# Follow logs in real-time (user service)
+journalctl --user -u water-python-api -f
+
+# View last 100 lines
+journalctl -u water-python-api -n 100
 ```
 
 ### Check Container Health

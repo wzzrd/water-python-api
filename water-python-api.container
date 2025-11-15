@@ -1,0 +1,44 @@
+# Systemd Quadlet configuration for water-python-api
+# Place this file in:
+#   - System-wide: /etc/containers/systemd/
+#   - User service: ~/.config/containers/systemd/
+#
+# After placing the file, run:
+#   systemctl daemon-reload
+#   systemctl start water-python-api
+#   systemctl enable water-python-api  # To start on boot
+
+[Container]
+ContainerName=water-python-api
+
+# Database configuration - REQUIRED
+# Update these with your actual database credentials
+Environment=DB_USER=waterapi
+Environment=DB_PASSWORD=your_secure_password_here
+Environment=DB_HOST=your-database-hostname
+Environment=DB_PORT=5432
+Environment=DB_NAME=watermeter
+
+# Water meter API endpoint - REQUIRED
+# Must include protocol (http:// or https://) and full path ending in /api/v1/data
+Environment=METER_API_URL=http://your-meter-ip-or-hostname/api/v1/data
+
+# Optional configuration
+Environment=METER_ID=default_meter
+Environment=COLLECTION_INTERVAL=300
+Environment=METER_API_TIMEOUT=10
+
+# Container settings
+HostName=water-python-api
+Image=localhost/water-python-api:latest
+Timezone=local
+
+# Automatic updates (optional - requires podman-auto-update.timer)
+Label=io.containers.autoupdate=registry
+AutoUpdate=registry
+
+# Restart policy
+PodmanArgs=--restart unless-stopped
+
+[Install]
+WantedBy=default.target
