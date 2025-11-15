@@ -22,17 +22,19 @@ This document tracks planned improvements, optimizations, and feature additions 
 
 ### Timezone Handling
 
-- [ ] **Fix timezone-aware datetime usage in water-python-api.py:264**
+- [x] **Fix timezone-aware datetime usage in water-python-api.py:264** ✅
   - Issue: Using naive `datetime.now()` instead of timezone-aware timestamps
   - Fix: Use `datetime.now(timezone.utc)` or configure PostgreSQL timezone handling
-  - Location: `water-python-api.py:264`
+  - Location: `water-python-api.py:269`
   - Impact: Could cause data integrity issues across timezones
+  - **Status**: Fixed - now using `datetime.now(timezone.utc)` for all database inserts
 
-- [ ] **Fix naive datetime comparison in maintenance-logger.py:142**
+- [x] **Fix naive datetime comparison in maintenance-logger.py:142** ✅
   - Issue: Strips timezone info with `.replace(tzinfo=None)` for days_ago calculation
   - Fix: Keep timezone-aware datetimes throughout, use proper timezone conversions
   - Location: `maintenance-logger.py:142`
   - Impact: Incorrect "days ago" calculations near DST changes
+  - **Status**: Fixed - removed `.replace(tzinfo=None)` and using timezone-aware datetime throughout
 
 ## Code Quality Improvements
 

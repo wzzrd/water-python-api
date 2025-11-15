@@ -14,7 +14,7 @@ import requests
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extras import RealDictCursor
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional
 import threading
 
@@ -266,7 +266,7 @@ class WaterMeterDaemon:
                 cursor.execute(
                     insert_sql,
                     (
-                        datetime.now(),
+                        datetime.now(timezone.utc),
                         self.meter_id,
                         float(reading_data["total_liter_m3"]),
                         float(reading_data["active_liter_lpm"]),
