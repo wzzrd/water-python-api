@@ -7,10 +7,19 @@ Log maintenance activities like salt block replacement, filter changes, etc.
 import os
 import sys
 import argparse
+import logging
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, timezone
 from typing import Optional
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
 
 class MaintenanceLogger:
     def __init__(self):
@@ -23,7 +32,7 @@ class MaintenanceLogger:
         self.meter_id = os.getenv('METER_ID', 'default_meter')
 
         if not self.db_user or not self.db_password:
-            print("Error: DB_USER and DB_PASSWORD environment variables are required")
+            logger.error("DB_USER and DB_PASSWORD environment variables are required")
             sys.exit(1)
 
     def connect_database(self):
@@ -38,9 +47,10 @@ class MaintenanceLogger:
                 cursor_factory=RealDictCursor
             )
             self.db_conn.autocommit = True
+            logger.info(f"Connected to database {self.db_name} on {self.db_host}")
             return True
         except psycopg2.Error as e:
-            print(f"Database connection failed: {e}")
+            logger.error(f"Database connection failed: {e}")
             return False
 
     def log_maintenance(self, maintenance_type: str, description: str = None,
@@ -72,17 +82,17 @@ class MaintenanceLogger:
                 ))
 
                 result = cursor.fetchone()
-                print(f"✅ Maintenance logged successfully!")
-                print(f"   ID: {result['id']}")
-                print(f"   Time: {result['time']}")
-                print(f"   Type: {maintenance_type}")
+                logger.info("✅ Maintenance logged successfully!")
+                logger.info(f"   ID: {result['id']}")
+                logger.info(f"   Time: {result['time']}")
+                logger.info(f"   Type: {maintenance_type}")
                 if description:
-                    print(f"   Description: {description}")
+                    logger.info(f"   Description: {description}")
 
                 return True
 
         except psycopg2.Error as e:
-            print(f"Failed to log maintenance: {e}")
+            logger.error(f"Failed to log maintenance: {e}")
             return False
 
     def list_recent_maintenance(self, days: int = 30):
@@ -101,27 +111,27 @@ class MaintenanceLogger:
                 results = cursor.fetchall()
 
                 if not results:
-                    print(f"No maintenance activities found in the last {days} days.")
+                    logger.info(f"No maintenance activities found in the last {days} days.")
                     return
 
-                print(f"\n📋 Recent maintenance activities (last {days} days):")
-                print("-" * 80)
+                logger.info(f"\n📋 Recent maintenance activities (last {days} days):")
+                logger.info("-" * 80)
 
                 for row in results:
-                    print(f"🔧 {row['time'].strftime('%Y-%m-%d %H:%M')} - {row['maintenance_type']}")
+                    logger.info(f"🔧 {row['time'].strftime('%Y-%m-%d %H:%M')} - {row['maintenance_type']}")
                     if row['description']:
-                        print(f"   Description: {row['description']}")
+                        logger.info(f"   Description: {row['description']}")
                     if row['quantity'] and row['unit']:
-                        print(f"   Quantity: {row['quantity']} {row['unit']}")
+                        logger.info(f"   Quantity: {row['quantity']} {row['unit']}")
                     if row['cost']:
-                        print(f"   Cost: €{row['cost']:.2f}")
+                        logger.info(f"   Cost: €{row['cost']:.2f}")
                     if row['notes']:
-                        print(f"   Notes: {row['notes']}")
-                    print(f"   Logged by: {row['created_by']}")
-                    print()
+                        logger.info(f"   Notes: {row['notes']}")
+                    logger.info(f"   Logged by: {row['created_by']}")
+                    logger.info("")
 
         except psycopg2.Error as e:
-            print(f"Failed to retrieve maintenance log: {e}")
+            logger.error(f"Failed to retrieve maintenance log: {e}")
 
     def get_last_salt_replacement(self):
         """Get the date of the last salt block replacement"""
@@ -140,18 +150,49 @@ class MaintenanceLogger:
 
                 if result:
                     days_ago = (datetime.now(timezone.utc) - result['time']).days
-                    print(f"🧂 Last salt replacement: {result['time'].strftime('%Y-%m-%d %H:%M')} ({days_ago} days ago)")
+                    logger.info(f"🧂 Last salt replacement: {result['time'].strftime('%Y-%m-%d %H:%M')} ({days_ago} days ago)")
                     if result['description']:
-                        print(f"   Description: {result['description']}")
+                        logger.info(f"   Description: {result['description']}")
                     if result['quantity'] and result['unit']:
-                        print(f"   Quantity: {result['quantity']} {result['unit']}")
+                        logger.info(f"   Quantity: {result['quantity']} {result['unit']}")
                     if result['notes']:
-                        print(f"   Notes: {result['notes']}")
+                        logger.info(f"   Notes: {result['notes']}")
                 else:
-                    print("🧂 No salt replacements recorded yet.")
+                    logger.info("🧂 No salt replacements recorded yet.")
 
         except psycopg2.Error as e:
-            print(f"Failed to retrieve last salt replacement: {e}")
+            logger.error(f"Failed to retrieve last salt replacement: {e}")
+
+    def get_last_change(self):
+        """Get the most recent maintenance activity of any type"""
+        try:
+            with self.db_conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT time, maintenance_type, description, quantity, unit, cost, notes
+                    FROM maintenance_log
+                    WHERE meter_id = %s
+                    ORDER BY time DESC
+                    LIMIT 1
+                """, (self.meter_id,))
+
+                result = cursor.fetchone()
+
+                if result:
+                    days_ago = (datetime.now(timezone.utc) - result['time']).days
+                    logger.info(f"🔧 Last maintenance: {result['maintenance_type']} on {result['time'].strftime('%Y-%m-%d %H:%M')} ({days_ago} days ago)")
+                    if result['description']:
+                        logger.info(f"   Description: {result['description']}")
+                    if result['quantity'] and result['unit']:
+                        logger.info(f"   Quantity: {result['quantity']} {result['unit']}")
+                    if result['cost']:
+                        logger.info(f"   Cost: €{result['cost']:.2f}")
+                    if result['notes']:
+                        logger.info(f"   Notes: {result['notes']}")
+                else:
+                    logger.info("🔧 No maintenance activities recorded yet.")
+
+        except psycopg2.Error as e:
+            logger.error(f"Failed to retrieve last maintenance activity: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description='Log water system maintenance activities')
@@ -181,6 +222,9 @@ def main():
     # Last salt command
     subparsers.add_parser('last-salt', help='Show last salt replacement')
 
+    # Last change command
+    subparsers.add_parser('last-change', help='Show most recent maintenance activity of any type')
+
     args = parser.parse_args()
 
     if not args.command:
@@ -191,35 +235,44 @@ def main():
     if not logger.connect_database():
         sys.exit(1)
 
-    if args.command == 'salt':
-        description = "Salt block replacement"
-        if args.brand:
-            description += f" ({args.brand})"
+    try:
+        if args.command == 'salt':
+            description = "Salt block replacement"
+            if args.brand:
+                description += f" ({args.brand})"
 
-        logger.log_maintenance(
-            maintenance_type='salt_replacement',
-            description=description,
-            quantity=args.quantity,
-            unit='kg' if args.quantity else None,
-            cost=args.cost,
-            notes=args.notes
-        )
+            logger.log_maintenance(
+                maintenance_type='salt_replacement',
+                description=description,
+                quantity=args.quantity,
+                unit='kg' if args.quantity else None,
+                cost=args.cost,
+                notes=args.notes
+            )
 
-    elif args.command == 'log':
-        logger.log_maintenance(
-            maintenance_type=args.type,
-            description=args.description,
-            quantity=args.quantity,
-            unit=args.unit,
-            cost=args.cost,
-            notes=args.notes
-        )
+        elif args.command == 'log':
+            logger.log_maintenance(
+                maintenance_type=args.type,
+                description=args.description,
+                quantity=args.quantity,
+                unit=args.unit,
+                cost=args.cost,
+                notes=args.notes
+            )
 
-    elif args.command == 'list':
-        logger.list_recent_maintenance(args.days)
+        elif args.command == 'list':
+            logger.list_recent_maintenance(args.days)
 
-    elif args.command == 'last-salt':
-        logger.get_last_salt_replacement()
+        elif args.command == 'last-salt':
+            logger.get_last_salt_replacement()
+
+        elif args.command == 'last-change':
+            logger.get_last_change()
+
+    finally:
+        # Ensure database connection is properly closed
+        if hasattr(logger, 'db_conn') and logger.db_conn:
+            logger.db_conn.close()
 
 if __name__ == "__main__":
     main()
