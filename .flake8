@@ -1,0 +1,35 @@
+[flake8]
+# Flake8 configuration for water-python-api project
+# This file ensures consistent linting between local development and CI/CD
+
+# Maximum line length
+max-line-length = 127
+
+# Maximum McCabe complexity
+max-complexity = 10
+
+# Files and directories to exclude from linting
+exclude =
+    .git,
+    __pycache__,
+    .pytest_cache,
+    venv,
+    env,
+    .venv,
+    tests,
+    build,
+    dist,
+    *.egg-info
+
+# Error codes to ignore (if any)
+# Currently none - we want to catch all issues
+ignore =
+
+# Show source code for each error
+show-source = True
+
+# Show statistics at the end
+statistics = True
+
+# Count the number of occurrences of each error/warning code
+count = True

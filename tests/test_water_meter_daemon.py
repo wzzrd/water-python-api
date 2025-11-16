@@ -4,8 +4,7 @@ Uses mocking to avoid dependencies on actual database and meter API
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch, call
-from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
 import psycopg2
 import sys
 import os
@@ -337,7 +336,7 @@ class TestHealthCheck:
             psycopg2.Error("Connection lost")
 
         with patch.object(daemon, '_connect_database', return_value=True) as mock_connect:
-            result = daemon._health_check()
+            daemon._health_check()
             mock_connect.assert_called_once()
 
 

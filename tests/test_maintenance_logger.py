@@ -4,7 +4,7 @@ Uses mocking to avoid dependencies on actual database
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from datetime import datetime, timezone
 import psycopg2
 import sys
