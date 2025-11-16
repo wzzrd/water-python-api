@@ -48,19 +48,22 @@ This document tracks planned improvements, optimizations, and feature additions 
 
 ### Code Cleanup
 
-- [ ] **Remove unused threading import**
+- [x] **Remove unused threading import** ✅
   - Location: `water-python-api.py:18`
   - Impact: Minor - code cleanliness
+  - **Status**: Fixed in commit a7d326a (flake8 linting fixes)
 
-- [ ] **Add database connection cleanup to maintenance-logger.py**
+- [x] **Add database connection cleanup to maintenance-logger.py** ✅
   - Issue: No `db_conn.close()` in main() function
   - Fix: Add try/finally block or context manager for connection lifecycle
   - Impact: Resource leaks in long-running scripts or automated calls
+  - **Status**: Fixed in commit 92f3aa2 (CLI enhancements) - added try/finally block in main() at line 277
 
-- [ ] **Replace print statements with logging module in maintenance-logger.py**
+- [x] **Replace print statements with logging module in maintenance-logger.py** ✅
   - Issue: Inconsistent with daemon's use of logging module
   - Fix: Configure logging and use `logger.info()`, `logger.error()`, etc.
   - Impact: Better log management, filtering, and integration with systemd
+  - **Status**: Fixed in commit 92f3aa2 (CLI enhancements) - all print statements replaced with logger calls
 
 ## Feature Additions
 
