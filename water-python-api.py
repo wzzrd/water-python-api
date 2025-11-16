@@ -16,7 +16,6 @@ from psycopg2 import sql
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, timezone
 from typing import Dict, Optional
-import threading
 
 # Configure logging
 logging.basicConfig(
@@ -55,7 +54,7 @@ class WaterMeterDaemon:
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
 
-        logger.info(f"Water Meter Daemon initialized")
+        logger.info("Water Meter Daemon initialized")
         logger.info(f"Collection interval: {self.collection_interval} seconds")
         logger.info(f"Meter API URL: {self.meter_api_url}")
         logger.info(f"Database: {self.db_host}:{self.db_port}/{self.db_name}")
@@ -304,7 +303,7 @@ class WaterMeterDaemon:
             logger.warning("Database health check failed, attempting reconnection...")
             return self._connect_database()
 
-    def run(self):
+    def run(self):  # noqa: C901
         """Main daemon loop"""
         logger.info("Starting Water Meter Daemon...")
 

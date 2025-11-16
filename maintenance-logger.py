@@ -11,7 +11,6 @@ import logging
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, timezone
-from typing import Optional
 
 # Configure logging
 logging.basicConfig(
@@ -20,6 +19,7 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
+
 
 class MaintenanceLogger:
     def __init__(self):
@@ -54,9 +54,9 @@ class MaintenanceLogger:
             return False
 
     def log_maintenance(self, maintenance_type: str, description: str = None,
-                       quantity: float = None, unit: str = None,
-                       cost: float = None, notes: str = None,
-                       created_by: str = 'manual'):
+                        quantity: float = None, unit: str = None,
+                        cost: float = None, notes: str = None,
+                        created_by: str = 'manual'):
         """Log a maintenance activity"""
         try:
             with self.db_conn.cursor() as cursor:
@@ -179,7 +179,11 @@ class MaintenanceLogger:
 
                 if result:
                     days_ago = (datetime.now(timezone.utc) - result['time']).days
-                    logger.info(f"🔧 Last maintenance: {result['maintenance_type']} on {result['time'].strftime('%Y-%m-%d %H:%M')} ({days_ago} days ago)")
+                    time_str = result['time'].strftime('%Y-%m-%d %H:%M')
+                    logger.info(
+                        f"🔧 Last maintenance: {result['maintenance_type']} "
+                        f"on {time_str} ({days_ago} days ago)"
+                    )
                     if result['description']:
                         logger.info(f"   Description: {result['description']}")
                     if result['quantity'] and result['unit']:
@@ -193,6 +197,7 @@ class MaintenanceLogger:
 
         except psycopg2.Error as e:
             logger.error(f"Failed to retrieve last maintenance activity: {e}")
+
 
 def main():
     parser = argparse.ArgumentParser(description='Log water system maintenance activities')
@@ -273,6 +278,7 @@ def main():
         # Ensure database connection is properly closed
         if hasattr(logger, 'db_conn') and logger.db_conn:
             logger.db_conn.close()
+
 
 if __name__ == "__main__":
     main()
